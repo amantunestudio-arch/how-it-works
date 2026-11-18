@@ -8,18 +8,8 @@
     "dev": "vite",
     "prebuild": "node scripts/build-index.mjs",
     "build": "vite build",
-    "preview": "vite preview",
-    "build:tiiny": "node scripts/build-index.mjs && vite build --mode tiiny",
-    "preadmin": "node scripts/build-index.mjs",
-    "admin": "vite --open /dashboard"
+    "preview": "vite preview"
   },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.8"
-  }
+  "dependencies": { "react": "^18.3.1", "react-dom": "^18.3.1", "react-router-dom": "^6.26.2" },
+  "devDependencies": { "@vitejs/plugin-react": "^4.3.1", "vite": "^5.4.8" }
 }

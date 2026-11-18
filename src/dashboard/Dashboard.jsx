@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { LOCAL, deleteArticle, listArticles, logout, publishLive, session } from '../lib.js';
+import { Link, Navigate, useNavigate } from '../router.jsx';
+import { deleteArticle, listArticles, logout, session, syncSite } from '../lib.js';
 import { Logo } from '../components/Layout.jsx';
 
 export function DHead({ children }) {
@@ -8,18 +8,11 @@ export function DHead({ children }) {
   return (
     <header className="dtop"><div className="brand dark"><Logo /><span>dashboard</span></div><span className="sp" />
       {children}<Link className="btn ghost sm" to="/" target="_blank">View site</Link>
-      {!LOCAL && <button className="btn ghost sm" onClick={() => { logout(); nav('/dashboard/login'); }}>Logout</button>}</header>
+      <button className="btn ghost sm" onClick={() => { logout(); nav('/dashboard/login'); }}>Logout</button></header>
   );
 }
 export default function Dashboard() {
   const [list, setList] = useState(null); const [err, setErr] = useState('');
-  const [pub, setPub] = useState({ busy: false, msg: '', ok: true });
-  async function goLive() {
-    if (!confirm('Site live update karni hai? (push/upload me thoda time lag sakta hai)')) return;
-    setPub({ busy: true, msg: 'Publish ho raha hai…', ok: true });
-    try { const r = await publishLive(); setPub({ busy: false, msg: r.message, ok: true }); }
-    catch (e) { setPub({ busy: false, msg: e.message, ok: false }); }
-  }
   const load = () => listArticles().then(setList).catch(e => setErr(e.message));
   useEffect(() => { if (session()) load(); }, []);
   if (!session()) return <Navigate to="/dashboard/login" replace />;
@@ -28,10 +21,9 @@ export default function Dashboard() {
     try { await deleteArticle(a.slug); setList(list.filter(x => x.slug !== a.slug)); } catch (e) { setErr(e.message); }
   }
   return (
-    <div className="dash"><DHead>{LOCAL && <button className="btn sm" disabled={pub.busy} onClick={goLive}>{pub.busy ? 'Publishing…' : 'Publish live'}</button>}<Link className="btn pri sm" to="/dashboard/new">+ New article</Link></DHead>
+    <div className="dash"><DHead><button className="btn ghost sm" onClick={() => { setErr(''); syncSite().then(() => alert('Site sync ho gayi.')).catch(e => setErr(e.message)); }}>Sync site</button><Link className="btn pri sm" to="/dashboard/new">+ New article</Link></DHead>
       <main className="dmain"><h1>Articles</h1>
-        <p className="hint">{LOCAL ? 'Save karne par change sirf is computer par dikhta hai (localhost). Sabko dikhane ke liye upar “Publish live” dabao.' : 'Save ke 1–2 minute baad site apne aap update ho jaati hai.'}</p>
-        {pub.msg && <p className={pub.ok ? 'hint' : 'err'} role="status" style={{ whiteSpace: 'pre-line' }}>{pub.msg}</p>}
+        <p className="hint">Save karte hi site update ho jaati hai (GitHub cache ki wajah se 1–5 minute lag sakte hain).</p>
         {err && <p className="err" role="alert">{err}</p>}
         {!list && !err && <p>Loading…</p>}
         {list && !list.length && <p className="empty">Abhi koi article nahi hai. “New article” se shuru karo.</p>}

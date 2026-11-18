@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
-export const BASE = import.meta.env.BASE_URL;
-export const SITE = { name: 'How It Works', email: 'hello@howitworks.example' }; // <- apna email yahan likho
+export let BASE = './';
+export const SITE = { name: 'How It Works', email: 'hello@howitworks.example', owner: '', repo: '', branch: 'main' };
+// config.json (site ke root me) se email + GitHub repo padhta hai. Badalne ke liye rebuild ki zarurat nahi.
+export async function loadConfig() {
+  try { const c = await (await fetch('config.json', { cache: 'no-cache' })).json(); Object.assign(SITE, c); } catch {}
+  if (SITE.owner && SITE.repo) BASE = `https://raw.githubusercontent.com/${SITE.owner}/${SITE.repo}/${SITE.branch || 'main'}/public/`;
+}
 export const asset = p => (!p ? '' : /^(https?:|data:|blob:)/.test(p) ? p : BASE + p.replace(/^\//, ''));
 export const fmt = d => new Date(d + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 export const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
@@ -10,7 +15,8 @@ export function useJSON(path) {
   const [s, set] = useState({ data: null, error: null });
   useEffect(() => {
     let live = true; set({ data: null, error: null });
-    fetch(BASE + path, { cache: 'no-cache' }).then(r => { if (!r.ok) throw 0; return r.json(); })
+    const get = u => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw 0; return r.json(); });
+    get(BASE + path).catch(() => get('./' + path))
       .then(data => live && set({ data, error: null })).catch(() => live && set({ data: null, error: true }));
     return () => { live = false; };
   }, [path]);
@@ -45,20 +51,10 @@ export function sanitize(html) {
 }
 export const withBase = h => h.replace(/src="images\//g, `src="${BASE}images/`);
 
-// ---------- LOCAL mode: `npm run admin` (vite dev) mein dashboard seedha computer ki files par kaam karta hai ----------
-export const LOCAL = import.meta.env.DEV;
-async function local(path, opt = {}) {
-  const r = await fetch('/api' + path, { ...opt, cache: 'no-store', headers: { 'Content-Type': 'application/json' } });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || 'Local server error ' + r.status);
-  return j;
-}
-export const publishLive = () => local('/deploy', { method: 'POST' });
-
 // ---------- GitHub (login + save) : koi database nahi ----------
 const store = () => (localStorage.getItem('hiw') ? localStorage : sessionStorage);
-export const session = () => { if (LOCAL) return { local: true }; try { return JSON.parse(sessionStorage.getItem('hiw') || localStorage.getItem('hiw')); } catch { return null; } };
-export function logout() { if (LOCAL) return; localStorage.removeItem('hiw'); sessionStorage.removeItem('hiw'); }
+export const session = () => { try { return JSON.parse(sessionStorage.getItem('hiw') || localStorage.getItem('hiw')); } catch { return null; } };
+export function logout() { localStorage.removeItem('hiw'); sessionStorage.removeItem('hiw'); }
 async function api(path, opt = {}, raw = false, s = session()) {
   const r = await fetch(`https://api.github.com/repos/${s.owner}/${s.repo}${path}`, { ...opt, cache: 'no-store', headers: { Authorization: 'Bearer ' + s.token, Accept: raw ? 'application/vnd.github.raw+json' : 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } });
   if (r.status === 401) { logout(); throw new Error('Token galat ya expire ho gaya. Dobara login karo.'); }
@@ -80,26 +76,34 @@ async function put(path, content, message) {
   if (!r.ok) throw new Error('Save nahi hua (' + r.status + ')');
 }
 export async function readArticle(slug) {
-  if (LOCAL) return (await local('/articles/' + slug)).article;
   const r = await api(`/contents/content/articles/${slug}.json?ref=${session().branch}`, {}, true);
   return r.status === 404 ? null : JSON.parse(await r.text());
 }
 export async function listArticles() {
-  if (LOCAL) return (await local('/articles')).articles;
   const r = await api(`/contents/content/articles?ref=${session().branch}`);
   if (r.status === 404) return [];
   const files = (await r.json()).filter(f => f.name.endsWith('.json'));
   const all = await Promise.all(files.map(f => readArticle(f.name.replace('.json', '')).catch(() => null)));
   return all.filter(Boolean).sort((a, b) => b.date.localeCompare(a.date));
 }
-export const saveArticle = a => LOCAL ? local('/articles/' + a.slug, { method: 'PUT', body: JSON.stringify(a) }) : put(`content/articles/${a.slug}.json`, b64(JSON.stringify(a, null, 2)), 'Update article: ' + a.title);
-export async function uploadImage(dataUrl, name) {
-  if (LOCAL) return (await local('/image', { method: 'POST', body: JSON.stringify({ name, dataUrl }) })).path;
-  await put('public/images/posts/' + name, dataUrl.split(',')[1], 'Add image ' + name); return 'images/posts/' + name; }
+const words = h => h.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+// Site jo JSON padhti hai (public/data) use dashboard khud update karta hai, to koi build/Action nahi chahiye.
+async function rebuildData(removed) {
+  const all = (await listArticles()).filter(a => a.status !== 'draft');
+  await put('public/data/index.json', b64(JSON.stringify(all.map(({ content, faq, note, ...x }) => ({ ...x, minutes: Math.max(1, Math.round(words(content || '') / 200)) })))), 'Update site index');
+  for (const a of all) await put(`public/data/articles/${a.slug}.json`, b64(JSON.stringify(a)), 'Publish: ' + a.title);
+  if (removed) { const p = `public/data/articles/${removed}.json`, sh = await sha(p); if (sh) await api(`/contents/${p}`, { method: 'DELETE', body: JSON.stringify({ message: 'Unpublish ' + removed, sha: sh, branch: session().branch }) }); }
+}
+export const syncSite = () => rebuildData();
+export async function saveArticle(a) {
+  await put(`content/articles/${a.slug}.json`, b64(JSON.stringify(a, null, 2)), 'Update article: ' + a.title);
+  await rebuildData(a.status === 'draft' ? a.slug : null);
+}
+export async function uploadImage(dataUrl, name) { await put('public/images/posts/' + name, dataUrl.split(',')[1], 'Add image ' + name); return 'images/posts/' + name; }
 export async function deleteArticle(slug) {
-  if (LOCAL) { await local('/articles/' + slug, { method: 'DELETE' }); return; }
   const p = `content/articles/${slug}.json`, sh = await sha(p);
   await api(`/contents/${p}`, { method: 'DELETE', body: JSON.stringify({ message: 'Delete ' + slug, sha: sh, branch: session().branch }) });
+  await rebuildData(slug);
 }
 export function fileToDataUrl(file, max = 1400) {
   return new Promise((res, rej) => {

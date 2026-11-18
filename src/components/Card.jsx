@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '../router.jsx';
 import { asset, tint } from '../lib.js';
 export default function Card({ a }) {
   return (

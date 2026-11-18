@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from '../router.jsx';
 import { BASE, asset, fileToDataUrl, readArticle, sanitize, saveArticle, session, slugify, uploadImage, withBase } from '../lib.js';
 import RichEditor from './RichEditor.jsx';
 import { DHead } from './Dashboard.jsx';

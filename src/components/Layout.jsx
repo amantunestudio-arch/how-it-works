@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet } from '../router.jsx';
 import { SITE } from '../lib.js';
 export const Logo = () => (
   <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#F4B63F"/><path d="M14 20h14v24h8V20h14" fill="none" stroke="#0F3B45" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/></svg>

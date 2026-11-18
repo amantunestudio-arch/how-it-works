@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '../router.jsx';
 import { usePage } from '../lib.js';
 export default function NotFound() {
   usePage('Page not found');

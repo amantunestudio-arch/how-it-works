@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from '../router.jsx';
 import { login, session } from '../lib.js';
 import { Logo } from '../components/Layout.jsx';
 export default function Login() {

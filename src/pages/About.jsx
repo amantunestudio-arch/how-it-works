@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '../router.jsx';
 import { usePage } from '../lib.js';
 export default function About() {
   usePage('About', 'How It Works explains everyday machines and software in plain English. Learn who we write for and how we keep things accurate.');

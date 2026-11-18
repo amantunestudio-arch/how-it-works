@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from '../router.jsx';
 import { asset, fmt, sanitize, tint, usePage, useJSON, withBase, SITE } from '../lib.js';
 import Card from '../components/Card.jsx';
 import NotFound from './NotFound.jsx';

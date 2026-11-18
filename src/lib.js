@@ -87,19 +87,19 @@ export async function listArticles() {
   return all.filter(Boolean).sort((a, b) => b.date.localeCompare(a.date));
 }
 const words = h => h.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
-// Site jo JSON padhti hai (public/data) use dashboard khud update karta hai, to koi build/Action nahi chahiye.
+// Site jo JSON padhti hai (docs/data) use dashboard khud update karta hai, to koi build/Action nahi chahiye.
 async function rebuildData(removed) {
   const all = (await listArticles()).filter(a => a.status !== 'draft');
-  await put('public/data/index.json', b64(JSON.stringify(all.map(({ content, faq, note, ...x }) => ({ ...x, minutes: Math.max(1, Math.round(words(content || '') / 200)) })))), 'Update site index');
-  for (const a of all) await put(`public/data/articles/${a.slug}.json`, b64(JSON.stringify(a)), 'Publish: ' + a.title);
-  if (removed) { const p = `public/data/articles/${removed}.json`, sh = await sha(p); if (sh) await api(`/contents/${p}`, { method: 'DELETE', body: JSON.stringify({ message: 'Unpublish ' + removed, sha: sh, branch: session().branch }) }); }
+  await put('docs/data/index.json', b64(JSON.stringify(all.map(({ content, faq, note, ...x }) => ({ ...x, minutes: Math.max(1, Math.round(words(content || '') / 200)) })))), 'Update site index');
+  for (const a of all) await put(`docs/data/articles/${a.slug}.json`, b64(JSON.stringify(a)), 'Publish: ' + a.title);
+  if (removed) { const p = `docs/data/articles/${removed}.json`, sh = await sha(p); if (sh) await api(`/contents/${p}`, { method: 'DELETE', body: JSON.stringify({ message: 'Unpublish ' + removed, sha: sh, branch: session().branch }) }); }
 }
 export const syncSite = () => rebuildData();
 export async function saveArticle(a) {
   await put(`content/articles/${a.slug}.json`, b64(JSON.stringify(a, null, 2)), 'Update article: ' + a.title);
   await rebuildData(a.status === 'draft' ? a.slug : null);
 }
-export async function uploadImage(dataUrl, name) { await put('public/images/posts/' + name, dataUrl.split(',')[1], 'Add image ' + name); return 'images/posts/' + name; }
+export async function uploadImage(dataUrl, name) { await put('docs/images/posts/' + name, dataUrl.split(',')[1], 'Add image ' + name); return 'images/posts/' + name; }
 export async function deleteArticle(slug) {
   const p = `content/articles/${slug}.json`, sh = await sha(p);
   await api(`/contents/${p}`, { method: 'DELETE', body: JSON.stringify({ message: 'Delete ' + slug, sha: sh, branch: session().branch }) });

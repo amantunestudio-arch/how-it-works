@@ -26,9 +26,11 @@ jobs:
         run: |
           mkdir _dash
           cp docs/dashboard.html _dash/dashboard.html
+          cp -r docs/assets _dash/assets
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _dash
       - id: deployment
         uses: actions/deploy-pages@v4
+

@@ -22,4 +22,4 @@ jobs:
         run: |
           curl --fail-with-body -sS -H "Authorization: Bearer $SRHT_TOKEN" \
             -F content=@site.tar.gz \
-            https://pages.sr.ht/publish/comparisons-and-differences.srht.site
+            https://pages.sr.ht/publish/how-it-works.srht.site

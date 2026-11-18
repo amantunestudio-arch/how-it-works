@@ -27,10 +27,13 @@ jobs:
           mkdir _dash
           cp docs/dashboard.html _dash/dashboard.html
           cp -r docs/assets _dash/assets
+          cp docs/config.json _dash/config.json
+          cp -r docs/data _dash/data
+          cp docs/favicon.svg _dash/favicon.svg
+          sed -i 's#</head>#<script>(function(){function g(){if(location.hash.indexOf("#/dashboard")!==0){location.replace(location.pathname+"#/dashboard/login")}}g();addEventListener("hashchange",g)})()</script></head>#' _dash/dashboard.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _dash
       - id: deployment
         uses: actions/deploy-pages@v4
-

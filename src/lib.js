@@ -1,17 +1,11 @@
 import { useEffect, useState } from 'react';
 export let BASE = './';
-export const SITE = { name: 'How It Works', email: 'hello@howitworks.example', dataUrl: '' };
-// config.json (site ke root me): email, aur dataUrl (agar site kisi aur host par hai to GitHub Pages ka URL). Rebuild nahi chahiye.
+export const SITE = { name: 'How It Works', email: 'hello@howitworks.example', owner: '', repo: '', branch: 'main' };
+// config.json (site ke root me) se email + GitHub repo padhta hai. Badalne ke liye rebuild ki zarurat nahi.
 export async function loadConfig() {
   try { const c = await (await fetch('config.json', { cache: 'no-cache' })).json(); Object.assign(SITE, c); } catch {}
-  if (SITE.dataUrl) BASE = SITE.dataUrl.replace(/\/?$/, '/');
+  if (SITE.owner && SITE.repo) BASE = `https://raw.githubusercontent.com/${SITE.owner}/${SITE.repo}/${SITE.branch || 'main'}/public/`;
 }
-// Static hosts jo fetch() ko block karte hain, unke liye data <script> tag se aata hai (data/all.js)
-let allP;
-const loadAll = () => allP || (allP = new Promise((res, rej) => {
-  const sc = document.createElement('script'); sc.src = BASE + 'data/all.js?t=' + Math.floor(Date.now() / 60000);
-  sc.onload = () => window.HIW_DATA ? res(window.HIW_DATA) : rej(); sc.onerror = rej; document.head.appendChild(sc);
-}));
 export const asset = p => (!p ? '' : /^(https?:|data:|blob:)/.test(p) ? p : BASE + p.replace(/^\//, ''));
 export const fmt = d => new Date(d + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 export const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
@@ -22,7 +16,7 @@ export function useJSON(path) {
   useEffect(() => {
     let live = true; set({ data: null, error: null });
     const get = u => fetch(u, { cache: 'no-cache' }).then(r => { if (!r.ok) throw 0; return r.json(); });
-    (SITE.dataUrl ? loadAll().then(d => { const m = path.match(/articles\/(.+)\.json$/); const v = m ? d.articles[m[1]] : d.index; if (!v) throw 0; return v; }) : get(BASE + path))
+    get(BASE + path).catch(() => get('./' + path))
       .then(data => live && set({ data, error: null })).catch(() => live && set({ data: null, error: true }));
     return () => { live = false; };
   }, [path]);
@@ -96,8 +90,6 @@ const words = h => h.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).lengt
 // Site jo JSON padhti hai (docs/data) use dashboard khud update karta hai, to koi build/Action nahi chahiye.
 async function rebuildData(removed) {
   const all = (await listArticles()).filter(a => a.status !== 'draft');
-  const idx = all.map(({ content, faq, note, ...x }) => ({ ...x, minutes: Math.max(1, Math.round(words(content || '') / 200)) }));
-  await put('docs/data/all.js', b64('window.HIW_DATA=' + JSON.stringify({ index: idx, articles: Object.fromEntries(all.map(a => [a.slug, a])) }) + ';'), 'Update site data');
   await put('docs/data/index.json', b64(JSON.stringify(all.map(({ content, faq, note, ...x }) => ({ ...x, minutes: Math.max(1, Math.round(words(content || '') / 200)) })))), 'Update site index');
   for (const a of all) await put(`docs/data/articles/${a.slug}.json`, b64(JSON.stringify(a)), 'Publish: ' + a.title);
   if (removed) { const p = `docs/data/articles/${removed}.json`, sh = await sha(p); if (sh) await api(`/contents/${p}`, { method: 'DELETE', body: JSON.stringify({ message: 'Unpublish ' + removed, sha: sh, branch: session().branch }) }); }

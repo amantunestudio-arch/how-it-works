@@ -1,4 +1,6 @@
 {
   "email": "hello@howitworks.example",
-  "dataUrl": ""
+  "owner": "",
+  "repo": "",
+  "branch": "main"
 }

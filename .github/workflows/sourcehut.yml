@@ -1,0 +1,25 @@
+name: Publish to sourcehut
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**']
+  workflow_dispatch:
+concurrency:
+  group: srht
+  cancel-in-progress: true
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build tarball
+        run: |
+          [ -f docs/index.html ] || cp docs/dashboard.html docs/index.html
+          tar -C docs -czf site.tar.gz .
+      - name: Publish
+        env:
+          SRHT_TOKEN: ${{ secrets.SRHT_TOKEN }}
+        run: |
+          curl --fail-with-body -sS -H "Authorization: Bearer $SRHT_TOKEN" \
+            -F content=@site.tar.gz \
+            https://pages.sr.ht/publish/comparisons-and-differences.srht.site
